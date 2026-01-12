@@ -1,0 +1,91 @@
+function onEdit(e) {
+
+  let ss = SpreadsheetApp.getActiveSheet(); // Accessing active spreadsheet
+
+  const edited = e.range; // Gets the range of the edited cell, declares as const to be unchangeable.
+  const column = edited.getColumn();
+  const row = edited.getRow(); 
+
+
+  // Time checks (Not currently functional)
+  const timeCellRef = "C" + row; //  Stores the corresponding cell for the requested time
+  const requestedLength = ss.getRange(timeCellRef).getValue(); // Accesses value in time slot cell
+
+  // Checking if tutor has taken 1:1 after student has filled in their request and time 
+  if (column == 5 && !ss.getRange(timeCellRef).isBlank()) { // second condition is accessing sheet, getting the cell and cheking it is NOT empty
+
+    editedCellRef = "E" + row; // stores edited cell
+    if (!ss.getRange(editedCellRef).isBlank()) { // If the edited cell is not left blank (to avoid triggering when a tutor is removed)
+
+      // Checking if notes section next to inputted tutor name is blank after 10 seconds of orignal edit
+      Utilities.sleep(2 * 1000) // Halting (sleeping) script for 10 seconds
+
+      let cellRef = "F" + row; // F is column for tutor notes, row is request row
+      if (ss.getRange(cellRef).isBlank()) { // .isBlank() returns true if cell is empty, then enters if condition 
+
+        // Tutor name search
+        const tutorName = edited.getValue(); 
+        let names = tutorName.trim().split(" "); // Breaks tutor name from a string into two strings (first name and last, breaks at space), list of strings, and removes white spaces before and after name
+        let firstName = names[0]; 
+        let lastName = names[names.length-1]; // In case tutor has multiple names
+        let tutorCode = ""; // Declaring tutorCode since variables defined inside {} blocks only exist inside those blocks
+        
+        // Checking if last name has at least three letters 
+        if (firstName.length >= 3 && lastName.length >= 3){
+          tutorCode = firstName.substring(0,3) + lastName.substring(0,3); // Concatentates as a new string of first and last, 3 first characters
+        }else if (firstName.length < 3){
+          tutorCode = firstName + lastName.substring(0,3); 
+        } else if (lastName.length < 3){
+          tutorCode = firstName.substring(0,3) + lastName; 
+        } else if (firstName.length < 3 && lastName.length < 3){
+          tutorCode = firstName + lastName
+        }
+
+        // Searching for tutor in Tutor Data Sheet
+        let ssTutor = SpreadsheetApp.openById('1zgYWlXB9PRvOGL4vmELJx82rY8buTE_n1gaiAvTCr5Y'); // Accesses Tutor Spreadsheet
+        let numTutors = ssTutor.getLastRow();
+        let tutorEmail = ""; // Initializes email before for loop to keep as a global variable
+
+        for (let i = 1; i <= numTutors; i = i + 1){
+          let SearchIdx = "A" + i; 
+          let searchString = ssTutor.getRange(SearchIdx).getValue();
+          
+          if (searchString == tutorCode){ // If tutorCode matches row, find tutor email and set it as the address
+            let emailCell = "H" + i;
+            tutorEmail = ssTutor.getRange(emailCell).getValue();
+          }
+        }
+
+        /*
+        // Searching student in Student Data Sheet (Not currently functional)
+        let ssStudent = SpreadsheetApp.openById('1NJJCoiImevYn-mWaTd3BD5Z_96XKVIij8fCf_mN1BsA'); // Accesses Student spreadsheet
+        let numStudents = ssStudent.getLastRow();
+        let studentEmail = ""; 
+
+        for (let j = 1; j <= numStudents; j = j + 1){
+          let SearchIdx = "A" + j; 
+          let searchString = ssStudent.getRange(SearchIdx).getValue();
+          
+          if (searchString == tutorCode){ // If tutorCode matches row, find tutor email and set it as the address
+            let emailCell = "H" + i;
+            studentEmail = ssTutor.getRange(emailCell).getValue();
+          }
+        }
+        */
+
+        let address = ss.getRange("A1").getValue(); // Accesses A1 cell, then the value within the cell
+        let subject = ss.getRange("A2").getValue();
+        let body = tutorEmail; // Testing to see if extracts email correctly 
+        // let body = ss.getRange("A3").getValue(); 
+        MailApp.sendEmail(address, subject, body);
+      }
+    }
+  }
+}
+
+// Most recent working sections: Searches in data sheet for Tutor Code and finds tutor email.  
+
+// Current issues:  
+//- does not give automatic filled email slots
+//- doesn't take in time slots
+
