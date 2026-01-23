@@ -1,0 +1,79 @@
+function notifyOpsUnconfirmed() {
+
+  let ss = SpreadsheetApp.openById("1X0fD6xgFj7Vdz77mX2BhHZShDbsi9qym_JExX-0_QyM"); // Needs to be changed to 1:1 sign up sheet ID for on program
+ 
+  let numNotConfirmed = 0; // Initialising number of unconfirmed emails total across all sheets
+  let numSheets = ss.getNumSheets();
+  let days = ""; // Initialising days (i.e. sheets names list) where unconfirmed requests are (a string)
+  let sheetConfirmed= 0; // Initialising number of unconfirmed requests for a single sheet to be reset throughout for loop
+  // Checking each sheet of the spreadsheet individually
+  for (let s = 0; s < numSheets; s = s + 1){
+
+    // Checking a single sheet
+    sheetUnconfirmed = 0; // Resetting number of unconfirmed requests for the new sheet
+    let sheet = ss.getSheets()[s]; // Gets first sheet to test on
+    let numRows = sheet.getLastRow();
+    // For loop to check each row within the confirmed email column. Checks if cell is now empty
+    for (let row = 3; row < numRows; row = row + 1){ // Starts at 3 since this is the row where requests start
+      let confirmedEmailCell = "J" + row;
+      if (sheet.getRange(confirmedEmailCell).getValue() == "Not Confirmed"){ // If the row has a not confirmed cell, increase count by 1
+        numNotConfirmed = numNotConfirmed + 1;
+        sheetUnconfirmed = sheetUnconfirmed + 1;
+      }
+    }
+
+    // If sheet has unconfirmed requests, add sheet name (the day) to the days string for email to Ops
+    if (sheetUnconfirmed != 0){
+      if (days == ""){ // If this is the first day with an unconfirmed request
+        days = sheet.getName().split(" ").slice(0,2).join(" "); // Takes only day and date, not month
+      } else if (days != ""){
+        days = days + ", " + sheet.getName().split(" ").slice(0,2).join(" "); // Appends next day to list
+      }
+    }
+  }
+
+  // Removing read Unconfirmed One-on-Ones emails
+  let readThreads = GmailApp.search('is:read subject:"Unconfirmed One-on-Ones"'); // Returns an array of read GmailThreads (each is a single email in this case) with the given subject (i.e. class objects in an array)
+  for (i = 0; i < readThreads.length; i++){
+    readThreads[i].moveToTrash();
+  }
+
+  // Searching for emails containing "Unconfirmed One-on-Ones" in the subject to check if number of unconfirmed requests has changed. Will only ever be one unread message of this kind. 
+  let prevNumUnconfirmed = 0; // initialising previous number of unconfirmed requests to be updated
+  let thread = GmailApp.search('is:unread subject:"Unconfirmed One-on-Ones"'); // Returns an array of unread GmailThreads with the given subject (i.e. class objects in an array)
+  if (thread.length != 0){ // Accounts for deleting the previous unread email after reading it
+    prevNumUnconfirmed = thread[0].getFirstMessageSubject().split(" ")[0]; // Splits subject to get number of unconfirmed messages
+  }
+  
+  // Sending Ops an email if the number of unconfirmed 1:1's after checking all rows in sheet is greater than 0 and more than the number from the previous email
+  if (prevNumUnconfirmed != numNotConfirmed && numNotConfirmed > 0){ // Setting preNumUnconfirmed to 0 means that the current number is always higher if the previous message is deleted
+
+    // Getting days as an array of date-day pairs i.e. [Tuesday 13th, Wednesday 14th]
+    splitDays = days.split(","); // Splits days from a string into an arry where elements are chosen as strings between commas
+
+    // Building html message from strings of html code
+    splitDaysHtml = "<ul>"; // Defines the html sections for formatting using strings, to be directly inputted into the html message body
+    for (let i = 0; i < splitDays.length; i++){
+      splitDaysHtml += "<li>" + splitDays[i] + "</li>"; // Appends new list item
+    }
+    splitDaysHtml += "</ul>"; // Closed unordered list (bullet list)
+
+    let address = "dionlepair13@gmail.com"; // To be changed to Ops email later
+    let subject = numNotConfirmed + " Unconfirmed One-on-Ones";
+    let msgHtml = "<p> Hi Ops Team,</p>" +
+
+    "<p> There are " + "<b>" + numNotConfirmed + " unconfirmed One-on-One requests </b> in the One-on-One spreadsheet on the following days:</p>" + 
+
+    splitDaysHtml + 
+
+    "<p> Please attend to these requests by manually searching the tutor and student in the data and <b> bcc both of them in the email</b>. The template is found in the Ops Drive  <a href='https://docs.google.com/document/d/1QwrVglUaGFasZ1H3n_rsuUqFSOfAymBmOCH8BaO8SPU/edit?tab=t.0'>Roles Guide</a>" + " under the One-on-Ones tab. Fill in the details of the request and sign off with your name so students (and Ops members) know who dealt with the request. </p>" + 
+
+    "Thanks," +
+    "<br> Ops Coords </br>" +
+    
+    "<p> This is an automated email. Do not reply. If you have any concerns, speak to the Ops Coords. </p>" // Need to fix url attachment for Roles Guide. Open a new tab when clicked
+
+    let msgPlain = msgHtml.replace(/(<([^>]+)>)/ig, ""); // replaces special characters in HTML with "" (nothing) in the body of the text
+    MailApp.sendEmail(address, subject, msgPlain, {htmlBody: msgHtml}); // htmlBody formats body as an html text 
+  }
+}
