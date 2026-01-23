@@ -1,18 +1,24 @@
 function onEdit(e) {
 
-  let ss = SpreadsheetApp.getActiveSpreadsheet(); // Accessing active spreadsheet
-
   const edited = e.range; // Gets the range of the edited cell, declares as const to be unchangeable.
+  let ss = edited.getSheet(); // Accessing edited sheet
   const column = edited.getColumn();
   const row = edited.getRow(); 
+  const editedCell = edited.getA1Notation(); // gets cell reference
 
   let timeCellRef = "C" + row; //  Stores the corresponding cell for the requested time
   let timeNotesCell = "D" + row; // Stores timing notes cell to check if timing notes are empty
+  let confirmedEmailCell = "J" + row; // Confirmation cell to be altered after email
+  let opsNotesCell = "K" + row;
+
+  // Remove confirmation status and notes whenever a cell is cleared from the row (not from content or Ops notes)
+  if ((![5,10,11].includes(column) && ss.getRange(editedCell).isBlank()) || ss.getRange(editedCell).getValue() == "⠀" && row > 3){ // row>3 allows for edits to top rows (not requests).      .includes(column) is if the value of column is in the array, returns true
+    ss.getRange(confirmedEmailCell).setValue("");
+    ss.getRange(opsNotesCell).setValue("");
+  } 
 
   // Checking if tutor has taken 1:1 after student has filled in their request and time with no timings notes
-  if (column == 5 && !ss.getRange(timeCellRef).isBlank() && ss.getRange(timeNotesCell).isBlank()) { // second condition is accessing sheet, getting the cell and checking it is NOT empty
-
-    
+  if (column == 6 && !ss.getRange(timeCellRef).isBlank() && ss.getRange(timeCellRef).getValue() != "⠀" && ss.getRange(timeNotesCell).isBlank()) { // second condition is accessing sheet, getting the cell and checking it is NOT empty and that time isn't the invisible character
     // Time formatting
     let startTime = ss.getRange(timeCellRef).getValue(); // Accesses value in time slot cell
     let endTime = ""; // Intiailising end time
@@ -25,22 +31,24 @@ function onEdit(e) {
       endTime = "1:" + startMinutes;
     }
     
-    let day = ss.getActiveSheet().getName().bold(); // Gets day of session from sheet name
+    let day = ss.getName().bold(); // Gets day of session from sheet name
 
-    editedCellRef = "E" + row; // stores edited cell
+    editedCellRef = "F" + row; // stores edited cell in tutor column
+    let cellRef = "G" + row; // F is column for tutor notes, row is request row
+
     if (!ss.getRange(editedCellRef).isBlank()) { // If the edited cell is not left blank (to avoid triggering when a tutor is removed)
 
       // Checking if notes section next to inputted tutor name is blank after 10 seconds of orignal edit
-      Utilities.sleep(2 * 1000) // Halting (sleeping) script for 10 seconds
+      Utilities.sleep(2 * 1000); // Halting (sleeping) script for 10 seconds
 
-      let cellRef = "F" + row; // F is column for tutor notes, row is request row
-      if (ss.getRange(cellRef).isBlank()) { // .isBlank() returns true if cell is empty, then enters if condition 
+      if (ss.getRange(cellRef).isBlank()) { // .isBlank() returns true if tutor notes is empty, then enters if condition 
 
         // Tutor name -> Tutor Code
         const tutorName = edited.getValue(); 
         let names = tutorName.trim().split(" "); // Breaks tutor name from a string into two strings (first name and last, breaks at space), list of strings, and removes white spaces before and after name
         let firstName = names[0]; 
-        let lastName = names[names.length-1]; // In case tutor has multiple names
+        let lastName = names[names.length-1]; 
+
         let tutorCode = ""; // Declaring tutorCode since variables defined inside {} blocks only exist inside those blocks
         
         // Checking if last name has at least three letters 
@@ -52,7 +60,7 @@ function onEdit(e) {
           tutorCode = firstName.substring(0,3) + lastName; 
         } else if (firstName.length < 3 && lastName.length < 3){
           tutorCode = firstName + lastName;
-        }
+        } 
 
         // Searching for tutor in Tutor Data Sheet
         let ssTutor = SpreadsheetApp.openById('1zgYWlXB9PRvOGL4vmELJx82rY8buTE_n1gaiAvTCr5Y'); // Accesses Tutor Spreadsheet
@@ -60,8 +68,8 @@ function onEdit(e) {
         let tutorEmail = ""; // Initializes email before for loop to keep as a global variable
 
         for (let i = 1; i <= numTutors; i = i + 1){
-          let SearchIdx = "A" + i; 
-          let searchString = ssTutor.getRange(SearchIdx).getValue(); // The tentative checking value
+          let searchIdx = "A" + i; 
+          let searchString = ssTutor.getRange(searchIdx).getValue(); // The tentative checking value
           
           if (searchString == tutorCode){ // If tutorCode matches row, find tutor email and set it as the address
             let emailCell = "H" + i;
@@ -69,9 +77,25 @@ function onEdit(e) {
           }
         }
 
+        // If tutor code is not in Ops data (as preferred name is different to legal name used for tutor code)
+        if (tutorEmail == ""){ // Searching in preferred name and last name for a match
+          for (k = 1; k <= numTutors; k = k + 1){
+            let lastSearchIdx = "F" + k; // Search index for last name
+            let prefSearchIdx = "X" + k; // Searches in preferred column instead
+
+            let searchStringPref = ssTutor.getRange(prefSearchIdx).getValue(); // Searches based on first 3 letters of preferred name 
+            let searchStringLast = ssTutor.getRange(lastSearchIdx).getValue();
+            
+            if (searchStringPref == firstName && searchStringLast == lastName){ // If last name matches row and first 3 letters of first name matches first 3 letters of preferred name, find tutor email
+              let emailCell = "H" + k;
+              tutorEmail = ssTutor.getRange(emailCell).getValue();
+            } 
+          }
+        }
+
         // Searching student in Student Data Sheet
         
-        let studentCell = "A" + row; 
+        let studentCell = "A" + row; // Getting preferred student name from 1:1 sheet
         let studentName = ss.getRange(studentCell).getValue(); 
         let namesStudent = studentName.trim().split(" "); // Splits students name into first and last
         let studentFirst = namesStudent[0];
@@ -99,12 +123,12 @@ function onEdit(e) {
         if (studentEmail == ""){ // If studentEmail is still "", no name has been found in the first for loop to change it
           for (let j = 1; j <= numStudents; j = j + 1){
             let lastSearchIdx = "D" + j; // Search index for last name
-            let prefSearchIdx = "X" + j; // Searches in preferred column instead
+            let prefSearchIdx = "C" + j; // Searches in preferred column instead
 
-            let searchStringPref = ssStudent.getRange(prefSearchIdx).getValue().substring(0,3); // Searches based on first 3 letters of preferred name 
+            let searchStringPref = ssStudent.getRange(prefSearchIdx).getValue(); // Searches based on first 3 letters of preferred name 
             let searchStringLast = ssStudent.getRange(lastSearchIdx).getValue();
             
-            if (searchStringPref == studentFirst.substring(0,3) && searchStringLast == studentLast){ // If last name matches row and first name matches preferred name, find student email
+            if (searchStringPref == studentFirst && searchStringLast == studentLast){ // If last name matches row and first name matches preferred name, find student email
               let emailCell = "F" + j;
               studentEmail = ssStudent.getRange(emailCell).getValue();
             } 
@@ -115,23 +139,57 @@ function onEdit(e) {
         let subjectCell = "B" + row;
         let subjectName = ss.getRange(subjectCell).getValue().bold(); // Extracts subject name, converts to bold text using .bold() (stores as html bolded)
 
-        let address = ss.getRange("A1").getValue(); // Accesses A1 cell, then the value within the cell
-        let subject = "Confirmation of One-on-One Session"; 
-        let msgHtml = 
-          "<p> Hi " + firstName + " and " + studentFirst + ", </p>" +
+        if (studentEmail != "" && tutorEmail != ""){
+          let address = ""; // No recipient
+          let subject = "Confirmation of One-on-One Session"; 
+          let msgHtml = 
+            "<p> Hi " + firstName + " and " + studentFirst + ", </p>" +
 
-          "<p>This email is to inform you that your One-on-One request has been fulfilled. Please see below for details about your upcoming session: </p>" + 
+            "<p>This email is to inform you that your One-on-One request has been fulfilled. Please see below for details about your upcoming session: </p>" + 
 
-          "<p>" + subjectName + ", " + day + " - " + "<b>" + startTime + " to "+ endTime + "</b>" + "</p>" + 
+            "<p>" + subjectName + ", " + day + " - " + "<b>" + startTime + " to "+ endTime + "</b>" + "</p>" + 
 
-         "<p>If you can no longer make this session, please reply to this email as soon as possible!</p>" +
+          "<p>If you can no longer make this session, please reply to this email as soon as possible!</p>" +
 
-         "<p>Kind Regards, </p>"; // Formatted in HTML to allow for bold text, <p> opens new paragraph, </p> closes paragraph
+          "<p>Kind Regards, </p>"
+          ; // Formatted in HTML to allow for bold text, <p> opens new paragraph, </p> closes paragraph
 
-        let msgPlain = msgHtml.replace(/(<([^>]+)>)/ig, ""); // replaces special characters in HTML with "" (nothing) in the body of the text
-        MailApp.sendEmail(address, subject, msgPlain, {htmlBody: msgHtml}); // htmlBody formats body as an html text
+          let msgPlain = msgHtml.replace(/(<([^>]+)>)/ig, ""); // replaces special characters in HTML with "" (nothing) in the body of the text
+          MailApp.sendEmail(address, subject, msgPlain, {htmlBody: msgHtml, 'bcc': studentEmail + "," + tutorEmail}); // htmlBody formats body as an html text
+
+          ss.getRange(confirmedEmailCell).setValue("Y");
+
+        } else if (studentEmail == "" || tutorEmail == ""){ // Failsafe: If no emails are found, sets confirmed email cell to Not Confirmed
+          let confirmedEmailCell = "J" + row; 
+          ss.getRange(confirmedEmailCell).setValue("Not Confirmed");
+
+          // Setting Ops notes message based on which email(s) missing
+          if (studentEmail == "" && tutorEmail == ""){
+            ss.getRange(opsNotesCell).setValue("Neither name found");
+          } else if (tutorEmail == ""){
+            ss.getRange(opsNotesCell).setValue("Tutor name not found");
+          } else if (studentEmail == ""){
+            ss.getRange(opsNotesCell).setValue("Student name not found");
+          }
+        }
+      } else if (!ss.getRange(cellRef).isBlank()){ // If tutor notes is not empty after waiting, set confirmed email to Not Confirmed
+        ss.getRange(confirmedEmailCell).setValue("Not Confirmed"); // Sets value to not confirmed
+        ss.getRange(opsNotesCell).setValue("Tutor notes not empty");
       }
     }
+  } else if (column == 6 && !ss.getRange(editedCell).isBlank() && (ss.getRange(timeCellRef).isBlank() || !ss.getRange(timeNotesCell).isBlank() || ss.getRange(timeCellRef).getValue() == "⠀")){ // If edited column is the tutor name, and is not edited to be blank and either no time was provided or timing notes is not blank or is the invisible character
+
+    ss.getRange(confirmedEmailCell).setValue("Not Confirmed");
+
+    if (ss.getRange(timeCellRef).isBlank() || ss.getRange(timeCellRef).getValue() == "⠀"){
+      ss.getRange(opsNotesCell).setValue("No time selected");
+    } else if (!ss.getRange(timeNotesCell).isBlank()){
+      ss.getRange(opsNotesCell).setValue("Timing requirements");
+    } 
   }
 }
 
+/*
+Potential Improvements:
+- Dropdown in timing notes for half-hour and 2-hour sessions, checking validity based on time frame provided on each day
+*/
