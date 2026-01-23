@@ -17,8 +17,9 @@ A Google script for excel which takes in data of updates for 1:1 sign ups and ex
         Timing requirements error: <br>
         The timing requirements error occurs when a the timing notes cell of the request is not empty. Be this because they're requesting a 2 hour session, a half hour session, or some other request. In this              scenario, the fix is to first check if the timing request is ok (for example if the tutor has signed up for a 2 hour session and it is in a time slot where 1:1s are running), then if it is ok, input the           time into the timing fixes cell in the format provided. This should then disappear and the cell should go green. </li> </br>
         <li>
-        Tutor name not found error: <br>
-        The tutor name not found error occurs when the name the tutor uses to fulfill a 1:1 request doesn't correspond to a tutor code in the Ops Tutor Data, or their first name and last name don't match the Ops          Tutor Data, or their preferred name and last name don't match the Ops data. 
+        Tutor/Student name not found error: <br>
+        The tutor name not found error occurs when the name the tutor/student uses to fulfill/put in a 1:1 request doesn't correspond to a name in the Ops Tutor/Student Data, or their first name and last name             don't match the Ops Tutor/Student Data, or their preferred name and last name don't match the Ops data. To fix this error, search the name manually in the Ops Data (via CTRL + F) and find their name. Then         copy and paste the email into the corresponding cell in the Ops fixes. This email will IMMEDIATELY disappear from the 1:1 sign-ups sheet and the cell will go green. Note that this email is not stored in           the sheet's version history since the email is immediately removed (i.e. not enough time has passed/not enough user actions have been performed for the sheet to store a new version history, so these               emails are still data-safe). </li></br>
+        
           
       </ul>
     </li>
