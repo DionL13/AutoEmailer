@@ -1,0 +1,137 @@
+function findTutorEmail(tutorName) {
+  // Finds tutor email by building tutor code from given first and last names, then searches the Ops Tutor data using this code with multiple methods. Returns tutor first name and tutor email (if found), otherwise returns tutor first name and "" as email. 
+
+  // NOTE: Needs to be altered in different years to have different tutor spreadsheet IDs
+  
+  let tutorEmail = "";
+  let names = tutorName.trim().split(" "); // Breaks tutor name from a string into two strings (first name and last, breaks at space), list of strings, and removes white spaces before and after name
+  let firstName = names[0]; 
+  let lastName = names[names.length-1]; 
+
+  let tutorCode = ""; // Declaring tutorCode since variables defined inside {} blocks only exist inside those blocks
+  let emailCell = "";
+  
+  // Checking if last name has at least three letters 
+  if (firstName.length >= 3 && lastName.length >= 3){
+    tutorCode = firstName.substring(0,3) + lastName.substring(0,3); // Concatentates as a new string of first and last, 3 first characters
+  }else if (firstName.length < 3){
+    tutorCode = firstName + lastName.substring(0,3); 
+  } else if (lastName.length < 3){
+    tutorCode = firstName.substring(0,3) + lastName; 
+  } else if (firstName.length < 3 && lastName.length < 3){
+    tutorCode = firstName + lastName;
+  } 
+
+  // Searching for tutor in Tutor Data Sheet
+  let ssTutor = SpreadsheetApp.openById('1zgYWlXB9PRvOGL4vmELJx82rY8buTE_n1gaiAvTCr5Y'); // Accesses Tutor Spreadsheet
+  let numTutors = ssTutor.getLastRow();
+
+  for (let i = 1; i <= numTutors; i = i + 1){
+    let searchIdx = "A" + i; 
+    let searchString = ssTutor.getRange(searchIdx).getValue(); // The tentative checking value
+    
+    if (searchString == tutorCode){ // If tutorCode matches row, find tutor email and set it as the address
+      emailCell = "H" + i;
+      tutorEmail = ssTutor.getRange(emailCell).getValue();
+    }
+  }
+
+  // If tutor code is not in Ops data (as preferred name is different to legal name used for tutor code)
+  if (tutorEmail == ""){ // Searching in preferred name and last name for a match
+    for (k = 1; k <= numTutors; k = k + 1){
+      let lastSearchIdx = "F" + k; // Search index for last name
+      let prefSearchIdx = "X" + k; // Searches in preferred column instead
+
+      let searchStringPref = ssTutor.getRange(prefSearchIdx).getValue(); // Searches based on first 3 letters of preferred name 
+      let searchStringLast = ssTutor.getRange(lastSearchIdx).getValue();
+      
+      if (searchStringPref == firstName && searchStringLast == lastName){ // If last name matches row and first 3 letters of first name matches first 3 letters of preferred name, find tutor email
+        emailCell = "H" + k;
+        tutorEmail = ssTutor.getRange(emailCell).getValue();
+      } 
+    }
+  }
+
+  let tutorEmailSearchCell = emailCell;
+  return [firstName, tutorEmail, tutorEmailSearchCell];
+}
+
+function findStudentEmail(studentName){
+  // Searches for student email in Ops student data based on given names 
+
+  let studentEmail = ""; // Default set for student email to be updated if email is found
+  let namesStudent = studentName.trim().split(" "); // Splits students name into first and last
+  let studentFirst = namesStudent[0];
+  let studentLast = namesStudent[namesStudent.length-1];
+
+  let ssStudent = SpreadsheetApp.openById('1NJJCoiImevYn-mWaTd3BD5Z_96XKVIij8fCf_mN1BsA'); // Accesses Student spreadsheet
+  let numStudents = ssStudent.getLastRow();
+  let emailCell = "";
+
+  // Searching for last name in Student Ops Data
+  for (let j = 1; j <= numStudents; j = j + 1){
+    let firstSearchIdx = "B" + j; // Search index for first name
+    let lastSearchIdx = "D" + j; // Search index for last name
+
+    let searchStringFirst = ssStudent.getRange(firstSearchIdx).getValue() // Tentative search string for first name
+    let searchStringLast = ssStudent.getRange(lastSearchIdx).getValue(); // Tentative search string for last name
+    
+    if (searchStringFirst == studentFirst && searchStringLast == studentLast){ // If first name and last name matches row, find student email
+      emailCell = "F" + j;
+      studentEmail = ssStudent.getRange(emailCell).getValue();
+    } 
+  }
+
+  // If name is not found in the first names, studentEmail is left unaltered, so check the preferred names
+  if (studentEmail == ""){ // If studentEmail is still "", no name has been found in the first for loop to change it
+    for (let j = 1; j <= numStudents; j = j + 1){
+      let lastSearchIdx = "D" + j; // Search index for last name
+      let prefSearchIdx = "C" + j; // Searches in preferred column instead
+
+      let searchStringPref = ssStudent.getRange(prefSearchIdx).getValue(); // Searches based on first 3 letters of preferred name 
+      let searchStringLast = ssStudent.getRange(lastSearchIdx).getValue();
+      
+      if (searchStringPref == studentFirst && searchStringLast == studentLast){ // If last name matches row and first name matches preferred name, find student email
+        emailCell = "F" + j;
+        studentEmail = ssStudent.getRange(emailCell).getValue();
+      } 
+    }
+  }
+
+  let studentEmailSearchCell = emailCell;
+  return [studentFirst, studentEmail, studentEmailSearchCell]; // Stores emailCell for quick searching when storing for Ops
+}
+
+function sendConfirmationEmail(studentEmail,tutorEmail,sessionTime,sessionDetails,editDetails){
+  // Edit details includes sheet and row in an array 
+
+  let ss = editDetails[0];
+  let row = editDetails[1];
+  let day = editDetails[2]; 
+  let confirmedEmailCell = "J" + row; // Confirmation cell to be altered after email
+
+  let studentFirst = sessionDetails[0];
+  let firstName = sessionDetails[1];
+  let subjectName = sessionDetails[2];
+
+  let address = ""; // No recipient
+  let subject = "Confirmation of One-on-One Session"; 
+  let msgHtml = 
+  "<p> Hi " + firstName + " and " + studentFirst + ", </p>" +
+
+  "<p>This email is to inform you that your One-on-One request has been fulfilled. Please see below for details about your upcoming session: </p>" + 
+
+  "<p>" + subjectName + ", " + day + " - " + "<b>" + sessionTime + "</b>" + "</p>" + 
+
+  "If you would like to make any changes to this session, do <b> not </b> change the 1:1 spreadsheet. Please email Ops directly and we will sort out the changes. </p>" +
+
+  "<p>If you can no longer make this session, please reply to this email as soon as possible!</p>" +
+
+  "<p>Kind Regards, </p>"
+  ; // Formatted in HTML to allow for bold text, <p> opens new paragraph, </p> closes paragraph
+
+  let msgPlain = msgHtml.replace(/(<([^>]+)>)/ig, ""); // replaces special characters in HTML with "" (nothing) in the body of the text
+  MailApp.sendEmail(address, subject, msgPlain, {htmlBody: msgHtml, 'bcc': studentEmail + "," + tutorEmail}); // htmlBody formats body as an html text
+
+  ss.getRange(confirmedEmailCell).setValue("Y");
+}
