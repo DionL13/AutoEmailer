@@ -1,4 +1,4 @@
-function onEdit(e) {
+function onEditHandler(e) { // Uses custom function handle so isn't a simple trigger and can get permission to other sheets
 
   // Editing variables
   const edited = e.range; // Gets the range of the edited cell, declares as const to be unchangeable.
@@ -18,7 +18,9 @@ function onEdit(e) {
   let sessionTime = "";
 
   let tutorEmail = ""; // Initializes email before for loop to keep as a global variable
+  let firstName = ""; // Initialising first name of tutor
   let studentEmail = ""; 
+  let studentFirst = ""; // Initialising first name of student
   let cellRef = "G" + row; // G is column for tutor notes, row is request row
   let sessionDetails = "";
 
@@ -28,43 +30,10 @@ function onEdit(e) {
   let tutorEmailOpsCell = "N" + row; 
   let sendEmailCell = "O" + row;
 
-  // Initialising logicals for if key data has been obtained for an email to be sent for confirmation. If data has been obtained, variables will update to true. 
-  let hasTime = false; 
-  let hasStudentEmail = false;
-  let hasTutorEmail = false;
+  // Other spredasheets
+  let [ssTutor, ssStudent] = getOtherSpreadsheets(); // Need a helper function for this since simple triggers can't request permission
 
-  // Remove confirmation status and notes whenever a cell is cleared from the row (not from content or Ops notes)
-  if (![5,10,11,12,13,14,15].includes(column) && (ss.getRange(editedCell).isBlank() || ss.getRange(editedCell).getValue() == "⠀") && row > 3){ // row>3 allows for edits to top rows (not requests).  .includes(column) is if the value of column is in the array, returns true
-
-    ss.getRange(confirmedEmailCell).setValue("");
-    ss.getRange(opsNotesCell).setValue("");
-    ss.getRange(timingOpsCell).setValue("");
-
-    // Resetting background colours for Ops cells
-    ss.getRange(timingOpsCell).setBackground('white');
-    ss.getRange(studentEmailOpsCell).setBackground('white');
-    ss.getRange(tutorEmailOpsCell).setBackground('white');
-  } 
-
-  // Ops fixes that require immediate clearing for data privacy
-  if (column == 12 && !ss.getRange(editedCell).isBlank() && row >= 3){ // Timing fixes (takes in inputs as time in form 3:00 PM - 5:00 PM)
-    sessionTime = ss.getRange(timingOpsCell).getValue(); // Accesses value in timing fixes cell and sets it to the session time in the email
-    ss.getRange(editedCell).setBackground('#ACE1AF');
-  }
-  // Updating Ops fixes section immediately after inputting emails to preserve data privacy
-  if (column == 13 && !ss.getRange(editedCell).isBlank() && row >= 3){
-    studentEmail = ss.getRange(editedCell).getValue();
-    ss.getRange(editedCell).setValue(""); // Immediately removing email
-    ss.getRange(editedCell).setBackground('#ACE1AF');
-  }
-  if (column == 14 && !ss.getRange(editedCell).isBlank() && row >= 3){
-    tutorEmail = ss.getRange(editedCell).getValue();
-    ss.getRange(editedCell).setValue(""); // Immediately removing email
-    ss.getRange(editedCell).setBackground('#ACE1AF');
-  }
-  
-
-  // TUTOR/STUDENT SEARCHING + EMAILING SECTION
+  // TUTOR/STUDENT, TIMING SEARCHING + EMAILING SECTION
 
   // Checking if tutor has taken 1:1 after student has filled in their request and time with no timings notes
   if (column == 6) {
@@ -90,26 +59,19 @@ function onEdit(e) {
 
       // Only setting time logical for when edited cell isn't blank
       if (startTime != "" && endTime != ""){
-        hasTime = true; // If enters this condition, the time is not blank
         sessionTime = startTime + " to " + endTime;
 
-        ss.getRange(timingOpsCell).setFontColor('white');
         ss.getRange(timingOpsCell).setValue(sessionTime);
       }
 
       // TUTOR EMAIL SECTION
       
       const tutorName = edited.getValue(); 
-      let firstName = ""; // Initialising first name of tutor
       let tutorEmailSearchCell = "";
 
       [firstName, tutorEmail, tutorEmailSearchCell] = findTutorEmail(tutorName); // See Helper Functions script for details
 
-      if (tutorEmail != ""){ // Setting Ops check to true if a tutor email is found
-        hasTutorEmail = true;
-
-        // Putting reference search cell in ops section
-        ss.getRange(tutorEmailOpsCell).setFontColor('white');
+      if (tutorEmail != ""){ // Putting cell for where tutor email exists in Ops data into ops section
         ss.getRange(tutorEmailOpsCell).setValue(tutorEmailSearchCell);
       }
 
@@ -118,19 +80,13 @@ function onEdit(e) {
 
       let studentCell = "A" + row; // Getting preferred student name from 1:1 sheet
       let studentName = ss.getRange(studentCell).getValue(); 
-      let studentFirst = ""; // Initialising first name of student
       let studentEmailSearchCell = "";
 
       [studentFirst, studentEmail, studentEmailSearchCell] = findStudentEmail(studentName);
 
-      if (studentEmail != ""){ // Setting Ops checks to true if student email is found
-        hasStudentEmail = true; 
-
-        // Putting reference search cell in ops section
-        ss.getRange(studentEmailOpsCell).setFontColor('white');
+      if (studentEmail != ""){ // Putting reference search cell in ops section
         ss.getRange(studentEmailOpsCell).setValue(studentEmailSearchCell);
       }
-
 
       // Checking if notes section next to inputted tutor name is blank after 10 seconds of orignal edit
       Utilities.sleep(2 * 1000); // Halting (sleeping) script for 10 seconds
@@ -152,10 +108,9 @@ function onEdit(e) {
           // Clearing reference search cells from ops section if email sends
           ss.getRange(tutorEmailOpsCell).setValue("");
           ss.getRange(studentEmailOpsCell).setValue("");
-          ss.getRange(timingOpsCell).setValue("");
-          
+          ss.getRange(timingOpsCell).setValue("");  
         } 
-        else if (studentEmail == "" || tutorEmail == ""){ // Failsafe: If no emails are found, sets confirmed email cell to Not Confirmed
+        else if (studentEmail == "" || tutorEmail == "" || (startTime == "" && endTime == "")){ // Failsafe: If no emails are found, sets confirmed email cell to Not Confirmed
           let confirmedEmailCell = "J" + row; 
           ss.getRange(confirmedEmailCell).setValue("Not Confirmed");
 
@@ -169,9 +124,7 @@ function onEdit(e) {
           else if (studentEmail == ""){
             ss.getRange(opsNotesCell).setValue("Student email not found");
           }
-        } 
-        else if (startTime == "" && endTime == ""){ // If no time selected 
-          if (ss.getRange(timeCellRef).isBlank() || !ss.getRange(timeNotesCell).isBlank() || ss.getRange(timeCellRef).getValue() == "⠀"){ // Timing checks for when time isn't simple
+          else if (ss.getRange(timeCellRef).isBlank() || !ss.getRange(timeNotesCell).isBlank() || ss.getRange(timeCellRef).getValue() == "⠀"){ // Timing checks for when time isn't simple
 
             ss.getRange(confirmedEmailCell).setValue("Not Confirmed");
             if (ss.getRange(timeCellRef).isBlank() || ss.getRange(timeCellRef).getValue() == "⠀"){
@@ -181,65 +134,85 @@ function onEdit(e) {
               ss.getRange(opsNotesCell).setValue("Timing requirements");
             } 
           }
-        }
+        } 
       } 
       else if (!ss.getRange(cellRef).isBlank()){ // If tutor notes is not empty after waiting, set confirmed email to Not Confirmed
         ss.getRange(confirmedEmailCell).setValue("Not Confirmed"); // Sets value to not confirmed
         ss.getRange(opsNotesCell).setValue("Tutor notes not empty");
       }
+    }  
+  }
+
+  // Remove confirmation status and notes whenever a cell is cleared from the row (not from content or Ops notes)
+  if (![5,11,12,13,14,15,16].includes(column) && (ss.getRange(editedCell).isBlank() || ss.getRange(editedCell).getValue() == "⠀" || ss.getRange(editedCell).getValue() == "Y") && row > 3){ // row>3 allows for edits to top rows (not requests).  .includes(column) is if the value of column is in the array, returns true.  == "Y" condition allows for manual changes to confirmation status to reset ops fixes colourings
+    if (column != 10){ // Doesn't reset confirmation status if confirmation status is what is originally altered
+    ss.getRange(confirmedEmailCell).setValue("");
     }
+    ss.getRange(opsNotesCell).setValue("");
+    ss.getRange(timingOpsCell).setValue("");
+    ss.getRange(sendEmailCell).setValue("");
+  }  
 
-    // Checking for Ops fixes (has time (and no timing notes), tutor and student emails). Only triggers if tutor column is edited since this is the only place where has... variables can change
-    if (ss.getRange(confirmedEmailCell).getValue() == "Not Confirmed"){ // Only gathers data for unconfirmed requests to be fixed
 
-      // Checking key data to set values to green if they are included
-      if (hasStudentEmail == true){
-        ss.getRange(studentEmailOpsCell).setBackground('#ACE1AF'); // Sets background colour to green
-        ss.getRange(studentEmailOpsCell).setFontColor('#ACE1AF'); // Setting font to new colour to make reference search invisible (safety measure)
-      }
-      if (hasTutorEmail == true){
-        ss.getRange(tutorEmailOpsCell).setBackground('#ACE1AF');
-        ss.getRange(hasTutorEmailOpsCell).setFontColor('#ACE1AF'); 
-      }
-      if (hasTime == true && ss.getRange(cellRef).isBlank()){ // Only says the time is valid if there are no tutor notes as tutor notes may indicate invalid times
-        ss.getRange(timingOpsCell).setBackground('#ACE1AF');
-        ss.getRange(timingOpsCell).setFontColor('#ACE1AF');
-      }
-    }
-  } 
-
-  /* Dealing with storing previous values for Ops fixes
   // Ops sending emails after three key datapoints are inputted
-  if (column == 15 && !ss.getRange(sendEmailCell).isBlank()){ // If cell for sending isn't blank
-    if (ss.getRange(timingOpsCell).getBackground() == '#ACE1AF' && ss.getRange(studentEmailOpsCell).getBackground() == '#ACE1AF' && ss.getRange(studentEmailOpsCell).getBackground() == '#ACE1AF'){ // Checking if all necessary data has been provided
-      
+  if (column == 15 && ss.getRange(sendEmailCell).getValue() == "Y"){ // If edited send cell and value is "Y"
+    if (ss.getRange(timingOpsCell).getBackground() == '#ace1af' && ss.getRange(studentEmailOpsCell).getBackground() == '#ace1af' && ss.getRange(tutorEmailOpsCell).getBackground() == '#ace1af'){ // Checking if all necessary data has been provided. If so, all will be correct colour
+
       // Retrieving student email
+      let studentEmailSearchCell = ss.getRange(studentEmailOpsCell).getValue(); // Gets reference cell to search with in Ops Student Data
+      studentEmail = ssStudent.getRange(studentEmailSearchCell).getValue(); // Sets student email as the value of the cell where the reference is in Ops Student Data
       
       // Retrieving tutor email
+      let tutorEmailSearchCell = ss.getRange(tutorEmailOpsCell).getValue();
+      tutorEmail = ssTutor.getRange(tutorEmailSearchCell).getValue();
+
+      // Retrieving session time
+      sessionTime = ss.getRange(timingOpsCell).getValue();
+
+      // Session details 
+      firstName = ss.getRange("F" + row).getValue().split(" ")[0]; // Accesses first name of tutor from spreadsheet
+      studentFirst = ss.getRange("A" + row).getValue().split(" ")[0];
       
+      let subjectCell = "B" + row;
+      let subjectName = ss.getRange(subjectCell).getValue().bold(); // Extracts subject name, converts to bold text using .bold() (stores as html bolded)
 
-      if (!ss.getRange(timingOpsCell).isBlank()){ // If Ops inputs a time
+      sessionDetails = [studentFirst, firstName, subjectName];
 
+      sendConfirmationEmail(studentEmail,tutorEmail,sessionTime,sessionDetails,editDetails); // Edit details are already stored when edit is made to change send to Y
+
+      ss.getRange(confirmedEmailCell).setValue("Y");
+      ss.getRange(opsNotesCell).setValue("");
+      ss.getRange(sendEmailCell).setValue("");
+
+      ss.getRange(timingOpsCell).setValue("");
+      ss.getRange(studentEmailOpsCell).setValue("");
+      ss.getRange(tutorEmailOpsCell).setValue("");
+    }
+    else if (ss.getRange(timingOpsCell).getBackground() != '#ace1af' || ss.getRange(studentEmailOpsCell).getBackground() != '#ace1af' || ss.getRange(tutorEmailOpsCell).getBackground() != '#ace1af'){
+      ss.getRange(sendEmailCell).setValue("");
+
+      // Flashing the unfilled cell red twice 
+      if (ss.getRange(timingOpsCell).getBackground() != '#ace1af'){
+        blinkCell(ss,timingOpsCell);
       }
-      sendConfirmationEmail(studentEmail,tutorEmail,sessionTime,sessionDetails,editDetails);
+       if (ss.getRange(studentEmailOpsCell).getBackground() != '#ace1af'){
+        blinkCell(ss,studentEmailOpsCell);
+      }
+       if (ss.getRange(tutorEmailOpsCell).getBackground() != '#ace1af'){
+        blinkCell(ss,tutorEmailOpsCell);
+      }
     }
   }
-  */
 }
 
 
 
 /*
 Current fixes needed:
-- Change font colour in conditional formatting (by custom excel functions) if confirmed email slot changes to Not Confirmed
-- Clear ops notes cell and any coloured cells in Ops to Fix if confirmed email cell is changed to "Y" manually
-- Clear ops notes and changed confirmed cell to "Y" if send? is "Y"
-- Send? detection to check if time, student and tutor email are all satisfied, and send regardless of tutor/student notes
-- If send? fails, change confirmation to send anyway fails and the ops notes to why it failed (e.g. timing notes not blank)
 
 Potential Improvements:
 - Dropdown in timing notes for half-hour and 2-hour sessions, checking validity based on time frame provided on each day
 - If a student doesn't have anyone who's filled the request, send out a slack call to arms message
-- If a stundent doesn't have anyone who's filled the request on the day of their session, send ops a progressive email update of how many there are for the day (like the unconfirmed emails)
+- If a stundent doesn't have anyone who's filled the request on the day of their session, send ops a progressive email update of how many of these there are for the day (like the unconfirmed emails), potentially a call to arms email send out if it goes over a certain number
 - Way for users to update code to account for different year's sheets. Search for tutor name and other columns, sheet IDs as a single search at the start of program which updates the auto-emailer code internally.
 */
