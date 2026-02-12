@@ -5,9 +5,10 @@
     <li>
       1:1 requests and sign ups: automating confirmation emails to both parties if no issues are found within the request
     </li>
-    <li>
-      <br>(In Progress)</br>
+    <li> (In Progress)
+      <br>
       Notifying team tutors of tutor absences and finding a class cover if necessary (or if a team tutor requests a class cover)
+      </br>
     </li>
   </ul>
 
