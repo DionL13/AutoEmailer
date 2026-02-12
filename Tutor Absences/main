@@ -153,16 +153,16 @@ function updateTutorSignIn(e) {
           // Searching tutor spread sheet for the subject needing to be covered
           for (let i = 1; i < ssTutor.getLastRow(); i += 1){ // Seaching with i representing the row index, info begins row 2 sheets rows, so index 1 in data arrays
 
-            if ((subjectName == ssTutorData[i][class1Col].slice(0,-2) || 
-            subjectName == ssTutorData[i][class2Col].slice(0,-2)) &&
-            (ssTutorData[i][block1Col] != block && ssTutorData[i][block2Col] != block)){ // If thes subject name matches either of a tutor's classes (slice to remove class name specifics), and neither of the tutor's classes are in the block that needs to be covered, add them to the list of potential covers. 
+            if (subjectName == ssTutorData[i][class1Col].slice(0,-2) || 
+            subjectName == ssTutorData[i][class2Col].slice(0,-2)){
+              if (ssTutorData[i][block1Col] != block && ssTutorData[i][block2Col] != block){// If thes subject name matches either of a tutor's classes (slice to remove class name specifics), and neither of the tutor's classes are in the block that needs to be covered, add them to the list of potential covers. 
 
-              potentialCovers.push([]); // Creates a new nested array for the tutor
+                potentialCovers.push([]); // Creates a new nested array for the tutor
 
-              // below is issue. Likely an indexing problem
-              potentialCovers.at(-1).push(ssTutorData[i][firstNameTutorCol]); // Appending tutor first name to last made nested array
-              potentialCovers.at(-1).push(ssTutorData[i][tutorEmailCol]);
-            }
+                potentialCovers.at(-1).push(ssTutorData[i][firstNameTutorCol]); // Appending tutor first name to last made nested array
+                potentialCovers.at(-1).push(ssTutorData[i][tutorEmailCol]);
+              }
+              else continue; // If the either block is the same, skip to next step
           }
 
           console.log("potentialCovers: ", potentialCovers);
