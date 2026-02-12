@@ -23,7 +23,7 @@ function findTutorEmail(tutorName) {
   } 
 
   // Searching for tutor in Tutor Data Sheet
-  let ssTutor = SpreadsheetApp.openById('1zgYWlXB9PRvOGL4vmELJx82rY8buTE_n1gaiAvTCr5Y'); // Accesses Tutor Spreadsheet
+  let ssTutor = SpreadsheetApp.openById('REDACTED'); // Accesses Tutor Spreadsheet
   let numTutors = ssTutor.getLastRow();
 
   for (let i = 1; i <= numTutors; i = i + 1){
@@ -64,7 +64,7 @@ function findStudentEmail(studentName){
   let studentFirst = namesStudent[0];
   let studentLast = namesStudent[namesStudent.length-1];
 
-  let ssStudent = SpreadsheetApp.openById('1NJJCoiImevYn-mWaTd3BD5Z_96XKVIij8fCf_mN1BsA'); // Accesses Student spreadsheet
+  let ssStudent = SpreadsheetApp.openById('REDACTED'); // Accesses Student spreadsheet
   let numStudents = ssStudent.getLastRow();
   let emailCell = "";
 
@@ -137,8 +137,8 @@ function sendConfirmationEmail(studentEmail,tutorEmail,sessionTime,sessionDetail
 }
 
 function getOtherSpreadsheets(){
-  let ssTutor = SpreadsheetApp.openById('1zgYWlXB9PRvOGL4vmELJx82rY8buTE_n1gaiAvTCr5Y'); // Accesses Tutor Spreadsheet
-  let ssStudent = SpreadsheetApp.openById('1NJJCoiImevYn-mWaTd3BD5Z_96XKVIij8fCf_mN1BsA'); // Accesses Student spreadsheet
+  let ssTutor = SpreadsheetApp.openById('REDACTED'); // Accesses Tutor Spreadsheet
+  let ssStudent = SpreadsheetApp.openById('REDACTED'); // Accesses Student spreadsheet
 
   return [ssTutor, ssStudent];
 }
