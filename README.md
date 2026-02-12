@@ -3,7 +3,7 @@
 <p> At this stage, the current code assists with: 
   <ul>
     <li>
-      1:1 requests and sign ups: automating confirmation emails to both parties if no issues are found within the request
+      1:1 requests and sign ups: automating confirmation emails to both parties if no issues are found within the request, dynamic emails to Ops of unconfirmed sessions
     </li>
     <li> (In Progress)
       <br>
